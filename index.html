@@ -500,6 +500,10 @@ var TEMPLATES = {
             { key:'email', label:'邮箱', required:false, aliases:['邮箱','email','mail'] },       
             { key:'note', label:'备注', required:false, aliases:['备注','学籍备注','remark','note','说明'] },
             { key:'graduateDate', label:'毕业时间', required:false, aliases:['毕业时间','毕业日期','graduateDate'] },
+            { key:'transferDate', label:'退转学时间', required:false, aliases:['退转学时间','转学时间','退学时间','transferDate'] },
+            { key:'source', label:'学生来源', required:false, aliases:['学生来源','来源','招生来源','source'] },
+            { key:'reward', label:'招生奖励金额', required:false, aliases:['招生奖励金额','招生奖励','奖励金额','reward'] },
+            { key:'referrer', label:'推荐人姓名', required:false, aliases:['推荐人姓名','推荐人','referrer'] },
             { key:'board', label:'走读/寄宿', required:false, aliases:['走读/寄宿','走读寄宿','boarding','住宿类型','走读','寄宿'] }
         ],
         dedupeKey: 'idNum'
@@ -1367,6 +1371,10 @@ function changeStatus(studentId){
         if(ct==='复读') newStatus='在读';
         var oldStatus=s.status;
         s.status=newStatus;
+        // 如果是转学或退学，自动记录时间
+        if(ct==='转学'||ct==='退学'){
+            s.transferDate=document.getElementById('m_effectDate').value;
+        }
         DB.statusLog.push({id:genId(),studentName:s.name,idNum:s.idNum,school:s.school,changeType:ct,beforeStatus:oldStatus,afterStatus:newStatus,effectDate:document.getElementById('m_effectDate').value,reason:document.getElementById('m_reason').value,involveRefund:document.getElementById('m_refund').value,operator:'用户',recordTime:new Date().toLocaleString()});
         saveData();
         showToast(s.name+' 状态已变更为：'+newStatus);
@@ -1853,6 +1861,10 @@ html+='<div><strong>入学年级：</strong>'+(s.enrollGrade||s.grade||'')+'</di
     html+='<div><strong>'+semesterLabel+'年级：</strong>'+s.grade+'</div>';
     html+='<div><strong>当前班级：</strong>'+(s.className||'')+'</div>';
     html+='<div><strong>毕业时间：</strong>'+(s.graduateDate?fmtDate(s.graduateDate):'未设置')+'</div>';
+    html+='<div><strong>退转学时间：</strong>'+(s.transferDate?fmtDate(s.transferDate):'无')+'</div>';
+    html+='<div><strong>学生来源：</strong>'+(s.source||'无')+'</div>';
+    html+='<div><strong>招生奖励金额：</strong>'+(s.reward||'0')+'</div>';
+    html+='<div><strong>推荐人姓名：</strong>'+(s.referrer||'无')+'</div>';
     html+='<div><strong>状态：</strong><span class="badge '+(s.status==='在读'?'badge-green':'badge-red')+'">'+(s.status||'')+'</span></div>';
     html+='<div><strong>类型：</strong>'+s.type+'（学费'+getTuition(s.type)+'）</div>';
     html+='<div><strong>年级：</strong>'+s.grade+'</div>';
@@ -2036,7 +2048,7 @@ function exportExcel(type){
         case 'students':
             fileName='学生信息库';
             data=DB.students.map(function(s){
-                                return{'学校':s.school,'姓名':s.name,'身份证号码':s.idNum,'性别':s.gender,'入学时间':fmtDate(s.enrollDate),'入学年级':s.enrollGrade||'','学生状态':s.status,'学生类型':s.type,'年级':s.grade,'班级':s.className,'走读/寄宿':s.board,'集团家长姓名':s.groupParent,'99u工号':s.groupId,'家长姓名':s.parent,'手机号':s.phone,'邮箱':s.email,'毕业时间':s.graduateDate||'','备注':s.note};
+                                return{'学校':s.school,'姓名':s.name,'身份证号码':s.idNum,'性别':s.gender,'入学时间':fmtDate(s.enrollDate),'入学年级':s.enrollGrade||'','学生状态':s.status,'学生类型':s.type,'年级':s.grade,'班级':s.className,'走读/寄宿':s.board,'集团家长姓名':s.groupParent,'99u工号':s.groupId,'家长姓名':s.parent,'手机号':s.phone,'邮箱':s.email,'毕业时间':s.graduateDate||'','退转学时间':s.transferDate||'','学生来源':s.source||'','招生奖励金额':s.reward||'','推荐人姓名':s.referrer||'','备注':s.note};
             });
             break;
         case 'fees':
