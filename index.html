@@ -228,6 +228,8 @@
                         <div class="form-group"><label>集团家长姓名</label><input type="text" id="f_groupParent"></div>
                         <div class="form-group"><label>99u工号</label><input type="text" id="f_groupId"></div>
                         <div class="form-group"><label>邮箱</label><input type="email" id="f_email"></div>
+                        <div class="form-group"><label>入学年级（不知道可留空，系统自动计算）</label><select id="f_enrollGrade"><option value="">自动计算</option><option>一年级</option><option>二年级</option><option>三年级</option><option>四年级</option><option>五年级</option><option>六年级</option><option>初一</option><option>初二</option><option>初三</option></select></div>
+                        <div class="form-group"><label>毕业时间</label><input type="date" id="f_graduateDate"></div>
                         <div class="form-group"><label>学籍备注</label><input type="text" id="f_note"></div>
 <div class="form-group">
     <label>学籍状态</label>
@@ -1077,7 +1079,8 @@ function addStudent(){
         groupId:document.getElementById('f_groupId').value.trim(),
         email:document.getElementById('f_email').value.trim(),
         note:document.getElementById('f_note').value.trim(),
-enrollGrade:document.getElementById('f_grade').value,
+enrollGrade:document.getElementById('f_enrollGrade').value||document.getElementById('f_grade').value,
+graduateDate:document.getElementById('f_graduateDate').value||'',
 xuejiStatus:document.getElementById('f_xuejiStatus').value,
 xuejiSchool:document.getElementById('f_xuejiSchool').value.trim(),
 xuejiDate:document.getElementById('f_xuejiDate').value,
@@ -1129,7 +1132,9 @@ function editStudent(studentId){
     
     if(isAdmin){
         html+='<div class="form-group"><label>学生类型</label><select id="e_type">'+typeOpts+'</select></div>';
-        html+='<div class="form-group"><label>走读/寄宿</label><select id="e_board"><option'+(s.board==='走读'?' selected':'')+'>走读</option><option'+(s.board==='寄宿'?' selected':'')+'>寄宿</option><option'+(s.board==='校车'?' selected':'')+'>校车</option></select></div>';
+                html+='<div class="form-group"><label>走读/寄宿</label><select id="e_board"><option'+(s.board==='走读'?' selected':'')+'>走读</option><option'+(s.board==='寄宿'?' selected':'')+'>寄宿</option><option'+(s.board==='校车'?' selected':'')+'>校车</option></select></div>';
+        html+='<div class="form-group"><label>走读/寄宿变更日期（如有变更请填写）</label><input type="date" id="e_boardChangeDate" value=""></div>';
+        html+='<div class="form-group"><label>毕业时间</label><input type="date" id="e_graduateDate" value="'+(s.graduateDate||'')+'"></div>';
     }else{
         html+='<div class="form-group"><label>学生类型（只读）</label><input value="'+(s.type||'')+'" readonly style="background:#f0f0f0;"></div>';
         html+='<div class="form-group"><label>走读/寄宿（只读）</label><input value="'+(s.board||'')+'" readonly style="background:#f0f0f0;"></div>';
@@ -1167,6 +1172,7 @@ function editStudent(studentId){
     html+='</div>';
     
     openModal('编辑学生 - '+s.name+' 【'+getRoleName()+'】', html, function(){
+        var oldBoard=s.board||'';
         var oldType=s.type;
         var oldXuejiStatus=s.xuejiStatus||'';
         var oldXuejiSchool=s.xuejiSchool||'';
@@ -1180,6 +1186,25 @@ function editStudent(studentId){
             s.className=document.getElementById('e_class').value.trim();
             s.type=document.getElementById('e_type').value;
             s.board=document.getElementById('e_board').value;
+            s.graduateDate=document.getElementById('e_graduateDate').value||'';
+            // 走读/寄宿变更记录
+            if(isAdmin && oldBoard!==s.board){
+                var boardDate=document.getElementById('e_boardChangeDate').value||new Date().toISOString().substr(0,10);
+                DB.statusLog.push({
+                    id:genId(),
+                    studentName:s.name,
+                    idNum:s.idNum,
+                    school:s.school,
+                    changeType:'走读寄宿变更',
+                    beforeStatus:oldBoard,
+                    afterStatus:s.board,
+                    effectDate:boardDate,
+                    reason:'走读/寄宿变更：'+oldBoard+' → '+s.board,
+                    involveRefund:'否',
+                    operator:localStorage.getItem('xjy_username')||'用户',
+                    recordTime:new Date().toLocaleString()
+                });
+            }
             s.parent=document.getElementById('e_parent').value.trim();
             s.phone=document.getElementById('e_phone').value.trim();
             s.groupParent=document.getElementById('e_groupParent').value.trim();
@@ -1818,6 +1843,13 @@ function renderProfileDetail(studentId){
     html+='<div><strong>身份证：</strong>'+(s.idNum||'')+'</div>';
     html+='<div><strong>入学时间：</strong>'+fmtDate(s.enrollDate)+'</div>';
 html+='<div><strong>入学年级：</strong>'+(s.enrollGrade||s.grade||'')+'</div>';
+    var pNow=new Date();
+    var pMonth=pNow.getMonth()+1;
+    var pAcademicYear=pMonth>=9?pNow.getFullYear():pNow.getFullYear()-1;
+    var semesterLabel=pMonth>=9?(pAcademicYear+'.9学期'):(pAcademicYear+'.2学期');
+    html+='<div><strong>'+semesterLabel+'年级：</strong>'+s.grade+'</div>';
+    html+='<div><strong>当前班级：</strong>'+(s.className||'')+'</div>';
+    html+='<div><strong>毕业时间：</strong>'+(s.graduateDate?fmtDate(s.graduateDate):'未设置')+'</div>';
     html+='<div><strong>状态：</strong><span class="badge '+(s.status==='在读'?'badge-green':'badge-red')+'">'+(s.status||'')+'</span></div>';
     html+='<div><strong>类型：</strong>'+s.type+'（学费'+getTuition(s.type)+'）</div>';
     html+='<div><strong>年级：</strong>'+s.grade+'</div>';
@@ -2001,7 +2033,7 @@ function exportExcel(type){
         case 'students':
             fileName='学生信息库';
             data=DB.students.map(function(s){
-                return{'学校':s.school,'姓名':s.name,'身份证号码':s.idNum,'性别':s.gender,'入学时间':fmtDate(s.enrollDate),'学生状态':s.status,'学生类型':s.type,'年级':s.grade,'班级':s.className,'走读/寄宿':s.board,'集团家长姓名':s.groupParent,'99u工号':s.groupId,'家长姓名':s.parent,'手机号':s.phone,'邮箱':s.email,'备注':s.note};
+                                return{'学校':s.school,'姓名':s.name,'身份证号码':s.idNum,'性别':s.gender,'入学时间':fmtDate(s.enrollDate),'入学年级':s.enrollGrade||'','学生状态':s.status,'学生类型':s.type,'年级':s.grade,'班级':s.className,'走读/寄宿':s.board,'集团家长姓名':s.groupParent,'99u工号':s.groupId,'家长姓名':s.parent,'手机号':s.phone,'邮箱':s.email,'毕业时间':s.graduateDate||'','备注':s.note};
             });
             break;
         case 'fees':
@@ -2277,8 +2309,25 @@ function autoUpgradeGrade(){
         if(s.status!=='在读') return;
         if(!s.enrollDate) return;
         
-        if(!s.enrollGrade){
-            s.enrollGrade=s.grade||'';
+        if(!s.enrollGrade && s.grade && s.enrollDate){
+            var ed=new Date(s.enrollDate);
+            if(!isNaN(ed.getTime())){
+                var eMonth=ed.getMonth()+1;
+                var eYear=ed.getFullYear();
+                var eAcademicYear=eMonth>=9?eYear:eYear-1;
+                var yp=currentAcademicYear-eAcademicYear;
+                var gl=null;
+                if((s.school||'').indexOf('小学')>-1) gl=primaryGrades;
+                else if((s.school||'').indexOf('初中')>-1) gl=middleGrades;
+                if(gl){
+                    var ci=gl.indexOf(s.grade);
+                    if(ci>-1){
+                        var ei=ci-yp;
+                        if(ei>=0 && ei<gl.length) s.enrollGrade=gl[ei];
+                    }
+                }
+            }
+            if(!s.enrollGrade) s.enrollGrade=s.grade||'';
         }
         
         var enrollDate=new Date(s.enrollDate);
