@@ -497,8 +497,10 @@ var TEMPLATES = {
             { key:'phone', label:'手机号', required:false, aliases:['手机','手机号','电话','phone','联系电话'] },
             { key:'groupParent', label:'集团家长姓名', required:false, aliases:['集团家长','集团家长姓名','集团员工'] },
             { key:'groupId', label:'99u工号', required:false, aliases:['工号','99u工号','员工号','groupId'] },
-            { key:'email', label:'邮箱', required:false, aliases:['邮箱','email','mail'] },
-            { key:'note', label:'备注', required:false, aliases:['备注','学籍备注','remark','note','说明'] }
+            { key:'email', label:'邮箱', required:false, aliases:['邮箱','email','mail'] },       
+            { key:'note', label:'备注', required:false, aliases:['备注','学籍备注','remark','note','说明'] },
+            { key:'graduateDate', label:'毕业时间', required:false, aliases:['毕业时间','毕业日期','graduateDate'] },
+            { key:'board', label:'走读/寄宿', required:false, aliases:['走读/寄宿','走读寄宿','boarding','住宿类型','走读','寄宿'] }
         ],
         dedupeKey: 'idNum'
     },
@@ -917,9 +919,10 @@ function smartImport(event, type){
                         }
                     }else{
                         // 新增
-                        if(type==='students'){
+                         if(type==='students'){
                             record.status = record.status || '在读';
-                            record.enrollGrade = record.grade || '';
+                            record.enrollGrade = record.enrollGrade || '';
+                            record.graduateDate = record.graduateDate || '';
                             record.createTime = new Date().toLocaleString();
                         }
                         DB[type].push(record);
@@ -3102,59 +3105,6 @@ function testCloudConnection(){
     
     xhr.send();
 }
-
-function testCloudConnection(){
-    var apiKey=document.getElementById('cloud_apiKey').value.trim();
-    var binId=document.getElementById('cloud_binId').value.trim();
-    var resultEl=document.getElementById('cloudTestResult');
-    
-    if(!apiKey){
-        resultEl.innerHTML='<span style="color:#e74c3c;">❌ 请先填入API Key</span>';
-        return;
-    }
-    
-    resultEl.innerHTML='<span style="color:#f39c12;">⏳ 测试连接中...</span>';
-    
-    if(binId){
-        // 测试读取
-        var xhr=new XMLHttpRequest();
-        xhr.open('GET','https://api.jsonbin.io/v3/b/'+binId+'/latest',true);
-        xhr.setRequestHeader('X-Master-Key',apiKey);
-        xhr.onload=function(){
-            if(xhr.status===200){
-                var resp=JSON.parse(xhr.responseText);
-                var data=resp.record||{};
-                var meta=data._meta||{};
-                resultEl.innerHTML='<span style="color:#27ae60;">✅ 连接成功！<br>'+
-                    '云端学生数：'+(meta.studentCount||'未知')+'<br>'+
-                    '最后修改：'+(meta.lastModified?new Date(meta.lastModified).toLocaleString():'未知')+'<br>'+
-                    '修改人：'+(meta.modifiedBy||'未知')+'</span>';
-            }else{
-                resultEl.innerHTML='<span style="color:#e74c3c;">❌ 连接失败：'+xhr.status+' '+xhr.statusText+'<br>请检查API Key和Bin ID是否正确</span>';
-            }
-        };
-        xhr.onerror=function(){
-            resultEl.innerHTML='<span style="color:#e74c3c;">❌ 网络错误，请检查网络连接</span>';
-        };
-        xhr.send();
-    }else{
-        // 没有binId，测试API Key是否有效
-        var xhr=new XMLHttpRequest();
-        xhr.open('GET','https://api.jsonbin.io/v3/c',true);
-        xhr.setRequestHeader('X-Master-Key',apiKey);
-        xhr.onload=function(){
-            if(xhr.status===200){
-                resultEl.innerHTML='<span style="color:#27ae60;">✅ API Key有效！<br>Bin ID为空，首次上传时会自动创建。</span>';
-            }else{
-                resultEl.innerHTML='<span style="color:#e74c3c;">❌ API Key无效：'+xhr.status+'<br>请重新复制正确的Secret Key</span>';
-            }
-        };
-        xhr.onerror=function(){
-            resultEl.innerHTML='<span style="color:#e74c3c;">❌ 网络错误</span>';
-        };
-        xhr.send();
-    }
-}
 // ============================================================
 // 🔐 用户登录与权限管理
 // ============================================================
@@ -3433,7 +3383,7 @@ function initAfterLogin(){
     if(typeof checkAutoBackup==='function') checkAutoBackup();
     
     // ★ 自动云同步：打开系统时自动下载最新数据
-    if(CLOUD.enabled && CLOUD.binId){
+    if(CLOUD.enabled){
         autoCloudDownload();
     }
     
